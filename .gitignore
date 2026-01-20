@@ -1,0 +1,33 @@
+# Dependency downloads
+.pubspec.resolved
+.packages
+
+# Dart tooling
+.dart_tool/
+.dart_tool_build/
+.build/
+
+# Pub cache
+.cache/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+.dart_tool/
+
+# Lock file
+pubspec.lock
+
+# Environment
+.env
+.hidden_data/

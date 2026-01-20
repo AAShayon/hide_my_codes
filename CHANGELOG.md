@@ -1,3 +1,12 @@
+## 1.0.1
+
+- Fixed pub.dev analysis issues
+- Reduced package description length for compliance
+- Added comprehensive documentation comments
+- Updated dependencies for better compatibility
+- Improved error handling and user feedback
+- Enhanced security implementation
+
 ## 1.0.0
 
 - Initial release of Hide My Code

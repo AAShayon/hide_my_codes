@@ -4,7 +4,6 @@
 /// allowing developers to hide sensitive implementation details from
 /// their repositories while providing a mechanism to regenerate them
 /// when needed.
-
 library hide_my_code;
 
 /// Main class for the hide_my_code package

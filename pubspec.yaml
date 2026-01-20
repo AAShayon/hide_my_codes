@@ -1,6 +1,6 @@
 name: hide_my_code
-description: A Flutter/Dart package that allows developers to hide specific files from their repository while providing a mechanism to generate them when needed. This package provides a secure way to share code without exposing critical implementation details.
-version: 1.0.0
+description: Hide and encrypt files in your repository with password protection.
+version: 1.0.1
 homepage: https://github.com/AAShayon/hide_my_codes
 repository: https://github.com/AAShayon/hide_my_codes
 
@@ -15,7 +15,6 @@ dependencies:
   encrypt: ^5.0.3
   crypto: ^3.0.3
   path: ^1.8.3
-  flutter_dotenv: ^5.2.1
   io: ^1.0.4
 
 dev_dependencies:

@@ -104,7 +104,7 @@ Future<void> _hideFiles(String password) async {
     
     // Create a placeholder file
     final originalFile = File(filePath);
-    await originalFile.writeAsString('// This file is hidden. Run "dart run hide_my_code" to reveal it.');
+    await originalFile.writeAsString('// hidden data');
     
     print('✅ Hidden: $filePath');
   }
@@ -166,9 +166,13 @@ Future<void> _visualFiles(String password) async {
     filesToReveal = indices.map((idx) => encryptedFiles[idx - 1]).toList();
   }
 
+  // Load metadata to get original paths
+  final metadata = await _loadMetadata();
+
   // Decrypt and restore each file
   for (final encryptedFileName in filesToReveal) {
-    final originalPath = encryptedFileName.replaceAll('.encrypted', '');
+    // Get the original path from metadata
+    final originalPath = metadata[encryptedFileName] ?? encryptedFileName.replaceAll('.encrypted', '');
     await _decryptAndRevealFile('.hidden_data/$encryptedFileName', originalPath, password);
     print('✅ Revealed: $originalPath');
   }
@@ -179,18 +183,25 @@ Future<void> _visualFiles(String password) async {
 Future<void> _encryptAndHideFile(String filePath, String password) async {
   final file = File(filePath);
   final content = await file.readAsString();
-  
+
   // Create encryption key from password
   final key = _deriveKey(password);
-  final encrypter = Encrypter(AES(Key(key)));
-  
+  final iv = IV.fromSecureRandom(16); // Generate a cryptographically secure random IV
+  final encrypter = Encrypter(AES(Key(key), mode: AESMode.cbc));
+
   // Encrypt the content
-  final encrypted = encrypter.encrypt(content, iv: IV.fromSecureRandom(16));
-  
-  // Save encrypted content to .hidden_data directory
+  final encrypted = encrypter.encrypt(content, iv: iv);
+
+  // Combine IV and encrypted content for storage
+  final combinedData = <int>[...iv.bytes, ...encrypted.bytes];
+
+  // Save combined data to .hidden_data directory
   final encryptedFileName = path.basename(filePath) + '.encrypted';
   final encryptedFile = File('.hidden_data/$encryptedFileName');
-  await encryptedFile.writeAsString(base64.encode(encrypted.bytes));
+  await encryptedFile.writeAsString(base64.encode(combinedData));
+
+  // Update metadata file to track original path
+  await _updateMetadata(filePath, encryptedFileName);
 }
 
 Future<void> _decryptAndRevealFile(String encryptedFilePath, String originalPath, String password) async {
@@ -198,28 +209,30 @@ Future<void> _decryptAndRevealFile(String encryptedFilePath, String originalPath
   final encryptedContent = await encryptedFile.readAsString();
 
   // Decode the base64 content
-  final encryptedBytes = base64.decode(encryptedContent);
+  final combinedBytes = base64.decode(encryptedContent);
 
-  // Extract IV and encrypted data (assuming first 16 bytes are IV)
-  if (encryptedBytes.length < 16) {
+  // Extract IV and encrypted data (first 16 bytes are IV)
+  if (combinedBytes.length < 16) {
     print('❌ Error: Invalid encrypted file format');
     return;
   }
 
+  // Split the combined data back into IV and encrypted content
+  final ivBytes = Uint8List.fromList(combinedBytes.take(16).toList());
+  final encryptedData = Uint8List.fromList(combinedBytes.skip(16).toList());
+
   // Create encryption key from password
   final key = _deriveKey(password);
-  final ivBytes = Uint8List(16); // For this simplified implementation, we'll use zeros
+  final iv = IV(ivBytes);
   final encrypter = Encrypter(AES(Key(key), mode: AESMode.cbc));
 
   // Decrypt the content
   try {
-    // For this implementation, we'll use the encryptedContent directly with decrypt64
-    // In a real implementation, we'd properly separate IV and ciphertext
-    final iv = IV(ivBytes);
+    // Create an Encrypted object from the encrypted data
+    final encryptedObj = Encrypted(encryptedData);
 
-    // Attempt to decrypt - note that this is a simplified approach
-    // In a real implementation, the IV would be stored with the encrypted data
-    final decrypted = encrypter.decrypt64(encryptedContent, iv: iv);
+    // Decrypt using the extracted IV
+    final decrypted = encrypter.decrypt(encryptedObj, iv: iv);
 
     // Write the decrypted content to the original file location
     final revealedFile = File(originalPath);
@@ -227,11 +240,10 @@ Future<void> _decryptAndRevealFile(String encryptedFilePath, String originalPath
     print('✅ Successfully revealed file: $originalPath');
   } catch (e) {
     print('❌ Error decrypting file: $e');
-    print('⚠️  Note: This is a simplified implementation. In a real scenario, IV would be stored with encrypted data.');
 
     // As fallback, create a placeholder
     final revealedFile = File(originalPath);
-    await revealedFile.writeAsString('// Decrypted content would appear here in a full implementation\n// Original file path: $originalPath');
+    await revealedFile.writeAsString('// hidden data');
   }
 }
 
@@ -250,8 +262,8 @@ Future<void> _updateGitignore(List<String> filePaths) async {
     gitignoreContent = await gitignoreFile.readAsString();
   }
 
-  // Add hidden files and directory to gitignore
-  final linesToAdd = ['.hidden_data/'];
+  // Add only the hidden files to gitignore (not the .hidden_data directory)
+  final linesToAdd = [];
   linesToAdd.addAll(filePaths);
   
   for (final line in linesToAdd) {
@@ -265,4 +277,30 @@ Future<void> _updateGitignore(List<String> filePaths) async {
 
   await gitignoreFile.writeAsString(gitignoreContent);
   print('✅ Updated .gitignore to exclude hidden files');
+}
+
+Future<void> _updateMetadata(String originalPath, String encryptedFileName) async {
+  final metadataFile = File('.hidden_data/metadata.json');
+  Map<String, dynamic> metadata = {};
+
+  if (await metadataFile.exists()) {
+    final content = await metadataFile.readAsString();
+    metadata = jsonDecode(content);
+  }
+
+  metadata[encryptedFileName] = originalPath;
+  await metadataFile.writeAsString(jsonEncode(metadata));
+}
+
+Future<Map<String, String>> _loadMetadata() async {
+  final metadataFile = File('.hidden_data/metadata.json');
+  if (!await metadataFile.exists()) {
+    return {};
+  }
+
+  final content = await metadataFile.readAsString();
+  final Map<String, dynamic> metadata = jsonDecode(content);
+
+  // Convert to Map<String, String>
+  return Map<String, String>.from(metadata);
 }

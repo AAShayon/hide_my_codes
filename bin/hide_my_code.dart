@@ -18,7 +18,8 @@ void main(List<String> arguments) async {
   final envFile = File('.env');
   if (!await envFile.exists()) {
     print('❌ Error: .env file not found!');
-    print('Please create a .env file with your password before using this tool.');
+    print(
+        'Please create a .env file with your password before using this tool.');
     print('');
     print('Example .env file:');
     print('PASSWORD=your_secret_password');
@@ -29,7 +30,7 @@ void main(List<String> arguments) async {
   // Load the password from .env
   final envContent = await envFile.readAsString();
   final password = _extractPassword(envContent);
-  
+
   if (password == null) {
     print('❌ Error: PASSWORD not found in .env file!');
     print('Please add PASSWORD=your_password to your .env file.');
@@ -69,7 +70,7 @@ Future<void> _hideFiles(String password) async {
   print('\n--- Hide Files Mode ---');
   stdout.write('Enter file paths to hide (separated by spaces or commas): ');
   final input = stdin.readLineSync()?.trim();
-  
+
   if (input == null || input.isEmpty) {
     print('No files specified. Exiting.');
     return;
@@ -101,17 +102,17 @@ Future<void> _hideFiles(String password) async {
   // Encrypt and move each file
   for (final filePath in filePaths) {
     await _encryptAndHideFile(filePath, password);
-    
+
     // Create a placeholder file
     final originalFile = File(filePath);
     await originalFile.writeAsString('// hidden data');
-    
+
     print('✅ Hidden: $filePath');
   }
 
   // Update .gitignore
   await _updateGitignore(filePaths);
-  
+
   print('\n✅ Files have been hidden successfully!');
   print('They are now encrypted and stored in .hidden_data/');
   print('Original locations have placeholder files.');
@@ -119,7 +120,7 @@ Future<void> _hideFiles(String password) async {
 
 Future<void> _visualFiles(String password) async {
   print('\n--- Visual (Reveal) Files Mode ---');
-  
+
   final hiddenDir = Directory('.hidden_data');
   if (!await hiddenDir.exists()) {
     print('No hidden files found. Nothing to reveal.');
@@ -144,7 +145,8 @@ Future<void> _visualFiles(String password) async {
     print('${i + 1}. ${encryptedFiles[i]}');
   }
 
-  stdout.write('Enter file numbers to reveal (comma-separated) or "all" for all: ');
+  stdout.write(
+      'Enter file numbers to reveal (comma-separated) or "all" for all: ');
   final input = stdin.readLineSync()?.trim();
 
   if (input == null || input.isEmpty) {
@@ -162,7 +164,7 @@ Future<void> _visualFiles(String password) async {
         .where((num) => num != null && num > 0 && num <= encryptedFiles.length)
         .cast<int>()
         .toList();
-    
+
     filesToReveal = indices.map((idx) => encryptedFiles[idx - 1]).toList();
   }
 
@@ -172,8 +174,10 @@ Future<void> _visualFiles(String password) async {
   // Decrypt and restore each file
   for (final encryptedFileName in filesToReveal) {
     // Get the original path from metadata
-    final originalPath = metadata[encryptedFileName] ?? encryptedFileName.replaceAll('.encrypted', '');
-    await _decryptAndRevealFile('.hidden_data/$encryptedFileName', originalPath, password);
+    final originalPath = metadata[encryptedFileName] ??
+        encryptedFileName.replaceAll('.encrypted', '');
+    await _decryptAndRevealFile(
+        '.hidden_data/$encryptedFileName', originalPath, password);
     print('✅ Revealed: $originalPath');
   }
 
@@ -186,7 +190,8 @@ Future<void> _encryptAndHideFile(String filePath, String password) async {
 
   // Create encryption key from password
   final key = _deriveKey(password);
-  final iv = IV.fromSecureRandom(16); // Generate a cryptographically secure random IV
+  final iv =
+      IV.fromSecureRandom(16); // Generate a cryptographically secure random IV
   final encrypter = Encrypter(AES(Key(key), mode: AESMode.cbc));
 
   // Encrypt the content
@@ -204,7 +209,8 @@ Future<void> _encryptAndHideFile(String filePath, String password) async {
   await _updateMetadata(filePath, encryptedFileName);
 }
 
-Future<void> _decryptAndRevealFile(String encryptedFilePath, String originalPath, String password) async {
+Future<void> _decryptAndRevealFile(
+    String encryptedFilePath, String originalPath, String password) async {
   final encryptedFile = File(encryptedFilePath);
   final encryptedContent = await encryptedFile.readAsString();
 
@@ -251,13 +257,14 @@ Uint8List _deriveKey(String password) {
   // Simple key derivation - in production, use proper PBKDF2 or similar
   final bytes = utf8.encode(password);
   final digest = sha256.convert(bytes);
-  return Uint8List.fromList(digest.bytes.take(32).toList()); // AES-256 requires 32-byte key
+  return Uint8List.fromList(
+      digest.bytes.take(32).toList()); // AES-256 requires 32-byte key
 }
 
 Future<void> _updateGitignore(List<String> filePaths) async {
   final gitignoreFile = File('.gitignore');
   var gitignoreContent = '';
-  
+
   if (await gitignoreFile.exists()) {
     gitignoreContent = await gitignoreFile.readAsString();
   }
@@ -265,7 +272,7 @@ Future<void> _updateGitignore(List<String> filePaths) async {
   // Add only the hidden files to gitignore (not the .hidden_data directory)
   final linesToAdd = [];
   linesToAdd.addAll(filePaths);
-  
+
   for (final line in linesToAdd) {
     if (!gitignoreContent.contains(line)) {
       if (gitignoreContent.isNotEmpty && !gitignoreContent.endsWith('\n')) {
@@ -279,7 +286,8 @@ Future<void> _updateGitignore(List<String> filePaths) async {
   print('✅ Updated .gitignore to exclude hidden files');
 }
 
-Future<void> _updateMetadata(String originalPath, String encryptedFileName) async {
+Future<void> _updateMetadata(
+    String originalPath, String encryptedFileName) async {
   final metadataFile = File('.hidden_data/metadata.json');
   Map<String, dynamic> metadata = {};
 
